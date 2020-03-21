@@ -66,7 +66,7 @@ func main() {
 	fmt.Printf("    XCMP Version = %s\n", master.GetXCMPVersion())
 	fmt.Printf("    Serial Number = %s\n", master.GetSerialNumber())
 	fmt.Printf("    Firmware Version = %s\n", master.GetFirmwareVersion())
-	fmt.Printf("    Model Number = %s\n", master.GetModelNumber())
+	fmt.Printf("    Model Name = %s\n", master.GetModelName())
 	fmt.Printf("    Alarms\n")
 	alarms := master.GetAlarmStatus()
 	for name, state := range alarms {
@@ -94,7 +94,7 @@ func main() {
 		fmt.Printf("    XCMP Version = %s\n", peer.GetXCMPVersion())
 		fmt.Printf("    Serial Number = %s\n", peer.GetSerialNumber())
 		fmt.Printf("    Firmware Version = %s\n", peer.GetFirmwareVersion())
-		fmt.Printf("    Model Number = %s\n", peer.GetModelNumber())
+		fmt.Printf("    Model Name = %s\n", peer.GetModelName())
 		fmt.Printf("    Alarms\n")
 		//alarms := peer.GetAlarmStatus()
 		//for name, state := range alarms {

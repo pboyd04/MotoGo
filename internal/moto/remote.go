@@ -159,7 +159,23 @@ func (r *RemoteRadio) GetSerialNumber() string {
 // GetModelNumber retrieves the remote radio model number
 func (r *RemoteRadio) GetModelNumber() string {
 	statusPkt := r.xcmpClient.SendAndWaitForRadioStatusReply(xcmp.ModelNumber)
-	return string(statusPkt.Data)
+	x := len(statusPkt.Data)
+	return string(statusPkt.Data[:x-2])
+}
+
+// GetModelName retrieves the remote radio model name
+func (r *RemoteRadio) GetModelName() string {
+	modelNumber := r.GetModelNumber()
+	switch modelNumber {
+	case "M27TRR9JA7BN":
+		return "XPR 8400 (UHF 450-512MHz)"
+	case "M27QPR9JA7BN":
+		return "XPR 8400 (UHF 403-470MHz)"
+	case "M27JQR9JA7BN":
+		return "XPR 8400 (VHF 136-174MHz)"
+	default:
+		return fmt.Sprintf("Unknown Model Number (%s)", modelNumber)
+	}
 }
 
 // GetRSSI retrieves the remote radio Received Signal Strength Indicator for both time slots
