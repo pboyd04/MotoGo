@@ -15,6 +15,7 @@
     },
     "radios": {
       "10001": "Repeater 1",
+      "10002": "Repeater 2",
       "1008": "Problem",
       "2110": "Rainczech"
     }

@@ -24,6 +24,7 @@ type Client struct {
 	transactionID  uint16
 	flag           byte
 	outstandingDPs map[uint16]Packet
+	alreadyInited  bool
 
 	PacketsIn chan Packet
 }
@@ -43,6 +44,7 @@ func NewClient(client *mototrbo.Client, id mototrbo.RadioID, addr *net.UDPAddr) 
 	c.transactionID = 0x0100
 	c.flag = 1
 	c.addr = addr
+	c.alreadyInited = false
 	c.outstandingDPs = make(map[uint16]Packet)
 	c.client.RegisterHandler(mototrbo.XnlXcmpPacket, c.gotXNLPacket)
 	c.RegisterHandler(MasterStatusBroadcast, c.gotMasterStatusBroadcast)
@@ -119,28 +121,39 @@ func (c *Client) GetRadioXNLID() Address {
 }
 
 func (c *Client) init() {
+	//fmt.Printf("%v: Initializing...\n", c.addr)
 	initPkt := NewInitPacket()
 	c.SendPacket(initPkt)
+	//fmt.Printf("%v: Waiting for ready...\n", c.addr)
 	<-c.ready
+	c.alreadyInited = true
+	//fmt.Printf("%v: Got ready\n", c.addr)
 }
 
 // GetAuthKey authenticates with XNL on the radio and creates an XCMP connection
 func (c *Client) GetAuthKey() {
+	//fmt.Printf("%v: Sending auth key request...\n", c.addr)
 	c.SendPacket(NewDevAuthKeyRequestPacket(c.xnlID))
 }
 
 func (c *Client) startConnection(tmpID uint16, authKey []byte) {
+	//fmt.Printf("%v: Starting connection...\n", c.addr)
 	pkt := NewDevConnectionRequestPacket(c.xnlID, Address(tmpID), Address(0), 0x0A, 0x01, authKey)
 	c.SendPacket(pkt)
 }
 
 func (c *Client) gotMasterStatusBroadcast(pkt Packet) bool {
+	//fmt.Printf("%v: Got master status broadcast...\n", c.addr)
 	c.xnlID = pkt.GetHeader().Src
-	c.ready <- true
+	//Only do this once, otherwise I can end up stuck...
+	if c.alreadyInited == false {
+		c.ready <- true
+	}
 	return true
 }
 
 func (c *Client) gotDeviceAuthKeyReply(pkt Packet) bool {
+	//fmt.Printf("%v: Sending auth key reply...\n", c.addr)
 	p := pkt.(DevKeyAuthReplyPacket)
 	c.startConnection(p.TempID, p.AuthKey)
 	return true

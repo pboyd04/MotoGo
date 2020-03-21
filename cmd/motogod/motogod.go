@@ -86,7 +86,7 @@ func main() {
 		_, ok := aliases[strconv.Itoa(int(peer.ID))]
 		if !ok {
 			//Repeater isn't in config file. Write it...
-			aliases[strconv.Itoa(int(master.ID))] = peer.GetRadioAlias()
+			aliases[strconv.Itoa(int(peer.ID))] = peer.GetRadioAlias()
 			viper.Set("aliases.radios", aliases)
 			viper.WriteConfig()
 		}
