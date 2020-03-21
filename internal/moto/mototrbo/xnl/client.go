@@ -3,6 +3,7 @@ package xnl
 import (
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/pboyd04/MotoGo/internal/moto/mototrbo"
 )
@@ -18,10 +19,11 @@ type Client struct {
 	myxnlID Address      //My xnl ID
 	addr    *net.UDPAddr //The network address of the radio
 
-	handlers      map[OpCode][]handler
-	ready         chan bool
-	transactionID uint16
-	flag          byte
+	handlers       map[OpCode][]handler
+	ready          chan bool
+	transactionID  uint16
+	flag           byte
+	outstandingDPs map[uint16]Packet
 
 	PacketsIn chan Packet
 }
@@ -41,6 +43,7 @@ func NewClient(client *mototrbo.Client, id mototrbo.RadioID, addr *net.UDPAddr) 
 	c.transactionID = 0x0100
 	c.flag = 1
 	c.addr = addr
+	c.outstandingDPs = make(map[uint16]Packet)
 	c.client.RegisterHandler(mototrbo.XnlXcmpPacket, c.gotXNLPacket)
 	c.RegisterHandler(MasterStatusBroadcast, c.gotMasterStatusBroadcast)
 	c.RegisterHandler(DeviceAuthKeyReply, c.gotDeviceAuthKeyReply)
@@ -48,6 +51,7 @@ func NewClient(client *mototrbo.Client, id mototrbo.RadioID, addr *net.UDPAddr) 
 	c.RegisterHandler(DeviceSysMapBroadcast, c.gotDeviceSystemBroadcast)
 	c.RegisterHandler(DataMessage, c.ackDataPacket)
 	c.RegisterHandler(DataMessageAck, c.gotAckPacket)
+	go c.retryLoop()
 	c.init()
 	return c
 }
@@ -89,6 +93,7 @@ func (c *Client) SendPacket(pkt Packet) {
 		}
 		c.transactionID++
 		dp.Header = header
+		c.outstandingDPs[header.TransactionID] = dp
 		pkt = dp
 	}
 	mp := mototrbo.NewXNLXCMPPacketByParam(c.id, pkt)
@@ -161,6 +166,16 @@ func (c *Client) ackDataPacket(pkt Packet) bool {
 }
 
 func (c *Client) gotAckPacket(pkt Packet) bool {
-	//NOOP for now
+	header := pkt.GetHeader()
+	delete(c.outstandingDPs, header.TransactionID)
 	return true
+}
+
+func (c *Client) retryLoop() {
+	for {
+		if len(c.outstandingDPs) > 0 {
+			fmt.Printf("Outstanding Data Packets %#v\n", c.outstandingDPs)
+		}
+		<-time.After(5 * time.Second)
+	}
 }

@@ -60,8 +60,6 @@ func main() {
 	fmt.Printf("    Firmware Version = %s\n", master.GetFirmwareVersion())
 	fmt.Printf("    Model Number = %s\n", master.GetModelNumber())
 	fmt.Printf("    Radio Alias = %s\n", master.GetRadioAlias())
-	rssi1, rssi2 := master.GetRSSI()
-	fmt.Printf("    RSSI = %f %f\n", rssi1, rssi2)
 	fmt.Printf("    Alarms\n")
 	alarms := master.GetAlarmStatus()
 	for name, state := range alarms {
@@ -71,6 +69,7 @@ func main() {
 	masterCallCount := make(chan int)
 	go master.ListenForCalls(calls, masterCallCount)
 	go logCountChanges(c, master.ID, masterCallCount)
+	go logRSSI(c, master)
 	peers := sys.PeerList()
 	for index, peer := range peers {
 		peerCallCount := make(chan int)
@@ -82,8 +81,6 @@ func main() {
 		fmt.Printf("    Firmware Version = %s\n", peer.GetFirmwareVersion())
 		fmt.Printf("    Model Number = %s\n", peer.GetModelNumber())
 		fmt.Printf("    Radio Alias = %s\n", peer.GetRadioAlias())
-		rssi1, rssi2 := peer.GetRSSI()
-		fmt.Printf("    RSSI = %f %f\n", rssi1, rssi2)
 		fmt.Printf("    Alarms\n")
 		//alarms := peer.GetAlarmStatus()
 		//for name, state := range alarms {
@@ -91,6 +88,7 @@ func main() {
 		//}
 		go peer.ListenForCalls(calls, peerCallCount)
 		go logCountChanges(c, peer.ID, peerCallCount)
+		go logRSSI(c, peer)
 	}
 	for {
 		call := <-calls
@@ -117,6 +115,31 @@ func logCountChanges(c client.Client, id mototrbo.RadioID, countChan chan int) {
 		if err != nil {
 			fmt.Printf("Error writing batch %v\n", err)
 		}
+	}
+}
+
+func logRSSI(c client.Client, radio *moto.RemoteRadio) {
+	tags := map[string]string{
+		"Radio": radioIDToString(radio.ID, false),
+	}
+	for {
+		if radio.GetActiveCallCount() == 0 {
+			rssi1, rssi2 := radio.GetRSSI()
+			point, err := client.NewPoint("rssi", tags, map[string]interface{}{"rssi1": rssi1, "rssi2": rssi2}, time.Now())
+			if err != nil {
+				fmt.Printf("Error creating point %v\n", err)
+			}
+			batch, err := client.NewBatchPoints(client.BatchPointsConfig{Precision: "s", Database: "radios"})
+			if err != nil {
+				fmt.Printf("Error creating batch %v\n", err)
+			}
+			batch.AddPoint(point)
+			err = c.Write(batch)
+			if err != nil {
+				fmt.Printf("Error writing batch %v\n", err)
+			}
+		}
+		<-time.After(5 * time.Minute)
 	}
 }
 

@@ -72,6 +72,11 @@ func (r *RemoteRadio) GetXCMPVersion() string {
 	return r.xcmpClient.Version
 }
 
+// GetActiveCallCount returns the number of active calls on the remote radio
+func (r *RemoteRadio) GetActiveCallCount() int {
+	return len(r.activeCalls)
+}
+
 // register registers with the master or peer as appropriate
 func (r *RemoteRadio) register() {
 	if r.IsMaster == false {
