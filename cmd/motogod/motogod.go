@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"time"
 
 	_ "github.com/influxdata/influxdb1-client" // this is important because of the bug in go mod
 	client "github.com/influxdata/influxdb1-client/v2"
@@ -52,8 +53,13 @@ func main() {
 	for name, state := range alarms {
 		fmt.Printf("        %s: %t\n", name, state)
 	}
+	calls := make(chan *moto.RadioCall, 10)
+	masterCallCount := make(chan int)
+	go master.ListenForCalls(calls, masterCallCount)
+	go logCountChanges(c, master.ID, masterCallCount)
 	peers := sys.PeerList()
 	for index, peer := range peers {
+		peerCallCount := make(chan int)
 		fmt.Printf("Peer %d ID: %d\n", index, peer.ID)
 		peer.InitXNL()
 		fmt.Printf("    XNL ID = %d\n", peer.GetXNLID())
@@ -65,17 +71,39 @@ func main() {
 		rssi1, rssi2 := peer.GetRSSI()
 		fmt.Printf("    RSSI = %f %f\n", rssi1, rssi2)
 		fmt.Printf("    Alarms\n")
-		alarms := peer.GetAlarmStatus()
-		for name, state := range alarms {
-			fmt.Printf("        %s: %t\n", name, state)
-		}
+		//alarms := peer.GetAlarmStatus()
+		//for name, state := range alarms {
+		//	fmt.Printf("        %s: %t\n", name, state)
+		//}
+		go peer.ListenForCalls(calls, peerCallCount)
+		go logCountChanges(c, peer.ID, peerCallCount)
 	}
-	calls := make(chan *moto.RadioCall, 10)
-	go master.ListenForCalls(calls)
 	for {
 		call := <-calls
 		fmt.Printf("%s: Got call from %d to %d (%f seconds)\n", call.StartTime, call.From, call.To, call.EndTime.Sub(call.StartTime).Seconds())
 		writeCallToDB(c, call)
+	}
+}
+
+func logCountChanges(c client.Client, id mototrbo.RadioID, countChan chan int) {
+	tags := map[string]string{
+		"Radio": radioIDToString(id, false),
+	}
+	for {
+		count := <-countChan
+		point, err := client.NewPoint("count", tags, map[string]interface{}{"value": count}, time.Now())
+		if err != nil {
+			fmt.Printf("Error creating point %v\n", err)
+		}
+		batch, err := client.NewBatchPoints(client.BatchPointsConfig{Precision: "s", Database: "radios"})
+		if err != nil {
+			fmt.Printf("Error creating batch %v\n", err)
+		}
+		batch.AddPoint(point)
+		err = c.Write(batch)
+		if err != nil {
+			fmt.Printf("Error writing batch %v\n", err)
+		}
 	}
 }
 

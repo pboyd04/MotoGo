@@ -19,13 +19,14 @@ type RemoteRadio struct {
 	EntityType xcmp.EntityType
 	Addr       *net.UDPAddr
 
-	system      *RadioSystem
-	xnlClient   *xnl.Client
-	xcmpClient  *xcmp.Client
-	activeCalls map[mototrbo.RadioID]*RadioCall
-	ready       chan bool
-	callChannel chan *RadioCall
-	alarms      map[string]bool
+	system        *RadioSystem
+	xnlClient     *xnl.Client
+	xcmpClient    *xcmp.Client
+	activeCalls   map[mototrbo.RadioID]*RadioCall
+	ready         chan bool
+	callChannel   chan *RadioCall
+	callCountChan chan int
+	alarms        map[string]bool
 }
 
 // NewRadio creates a new RemoteRadio instance
@@ -103,8 +104,9 @@ func (r *RemoteRadio) InitXNL() {
 }
 
 // ListenForCalls starts a loop waiting for call packets and keeping the connection alive
-func (r *RemoteRadio) ListenForCalls(calls chan *RadioCall) {
+func (r *RemoteRadio) ListenForCalls(calls chan *RadioCall, callCount chan int) {
 	for {
+		r.callCountChan = callCount
 		call := <-r.callChannel
 		calls <- call
 	}
@@ -246,6 +248,9 @@ func (r *RemoteRadio) gotUserPacket(pkt mototrbo.Packet) bool {
 		r.callChannel <- call
 	} else {
 		r.activeCalls[to] = call
+	}
+	if r.callCountChan != nil {
+		r.callCountChan <- len(r.activeCalls)
 	}
 	return true
 }
