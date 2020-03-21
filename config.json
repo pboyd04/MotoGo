@@ -1,0 +1,21 @@
+{
+  "aliases": {
+    "groups": {
+      "200": "Safety 1",
+      "201": "Safety 2",
+      "202": "Site Ops",
+      "203": "Guardians",
+      "204": "Genesis",
+      "205": "Open 1",
+      "206": "Open 2",
+      "207": "Open 3",
+      "208": "Sound",
+      "209": "Medic",
+      "254": "Nap"
+    },
+    "radios": {
+      "1008": "Problem",
+      "2110": "Rainczech"
+    }
+  }
+}

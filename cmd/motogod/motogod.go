@@ -3,36 +3,50 @@ package main
 import (
 	"flag"
 	"fmt"
+	"strconv"
 	"time"
 
 	_ "github.com/influxdata/influxdb1-client" // this is important because of the bug in go mod
 	client "github.com/influxdata/influxdb1-client/v2"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
+
 	"github.com/pboyd04/MotoGo/internal/moto"
 	"github.com/pboyd04/MotoGo/internal/moto/mototrbo"
 )
 
 func main() {
-	//Parse the command line flags
-	masterAddrPtr := flag.String("master", "192.168.0.100:50000", "The motrobo master with IP and port")
-	influxAddr := flag.String("influx", "http://localhost:8086", "The influx DB instance address")
-	myIDPtr := flag.Int("id", 1, "The radio ID for this node to use")
+	//Default config values
+	viper.SetDefault("master", "192.168.0.100:50000")
+	viper.SetDefault("influx", "http://localhost:8086")
+	viper.SetDefault("id", 1)
+	viper.SetConfigName("config")
+	viper.AddConfigPath(".")
 
-	flag.Parse()
+	//Parse the command line flags
+	flag.String("master", "192.168.0.100:50000", "The motrobo master with IP and port")
+	flag.String("influx", "http://localhost:8086", "The influx DB instance address")
+	flag.Int("id", 1, "The radio ID for this node to use")
+
+	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+	pflag.Parse()
+	viper.ReadInConfig()
+	viper.BindPFlags(pflag.CommandLine)
 
 	//Connect to influx db
 	c, err := client.NewHTTPClient(client.HTTPConfig{
-		Addr: *influxAddr,
+		Addr: viper.GetString("influx"),
 	})
 	if err != nil {
 		panic(err)
 	}
 	defer c.Close()
 
-	sys, err := moto.NewRadioSystem(mototrbo.RadioID(*myIDPtr), mototrbo.CapacityPlus)
+	sys, err := moto.NewRadioSystem(mototrbo.RadioID(viper.GetInt("id")), mototrbo.CapacityPlus)
 	if err != nil {
 		panic(err)
 	}
-	err = sys.ConnectToMaster(*masterAddrPtr)
+	err = sys.ConnectToMaster(viper.GetString("master"))
 	if err != nil {
 		panic(err)
 	}
@@ -80,7 +94,6 @@ func main() {
 	}
 	for {
 		call := <-calls
-		fmt.Printf("%s: Got call from %d to %d (%f seconds)\n", call.StartTime, call.From, call.To, call.EndTime.Sub(call.StartTime).Seconds())
 		writeCallToDB(c, call)
 	}
 }
@@ -113,7 +126,8 @@ func writeCallToDB(c client.Client, call *moto.RadioCall) {
 		"From":   radioIDToString(call.From, false),
 		"Length": fmt.Sprintf("%f", call.EndTime.Sub(call.StartTime).Seconds()),
 	}
-	point, err := client.NewPoint("calls", tags, map[string]interface{}{"value": 1}, call.StartTime)
+	fmt.Printf("%s: Got call from %s to %s (%f seconds)\n", call.StartTime, tags["From"], tags["To"], call.EndTime.Sub(call.StartTime).Seconds())
+	point, err := client.NewPoint("calls", tags, map[string]interface{}{"value": 1, "length": call.EndTime.Sub(call.StartTime).Seconds()}, call.StartTime)
 	if err != nil {
 		fmt.Printf("Error creating point %v\n", err)
 	}
@@ -129,9 +143,18 @@ func writeCallToDB(c client.Client, call *moto.RadioCall) {
 }
 
 func radioIDToString(id mototrbo.RadioID, group bool) string {
-	//TODO Look up the id
 	if group {
+		aliases := viper.GetStringMapString("aliases.groups")
+		alias, ok := aliases[strconv.Itoa(int(id))]
+		if ok {
+			return alias
+		}
 		return fmt.Sprintf("Group %d", id)
+	}
+	aliases := viper.GetStringMapString("aliases.radios")
+	alias, ok := aliases[strconv.Itoa(int(id))]
+	if ok {
+		return alias
 	}
 	return fmt.Sprintf("Radio %d", id)
 }
