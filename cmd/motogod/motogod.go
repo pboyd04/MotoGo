@@ -54,12 +54,19 @@ func main() {
 	fmt.Printf("Master ID = %d\n", sys.GetMasterID())
 	master := sys.GetMaster()
 	master.InitXNL()
+	aliases := viper.GetStringMapString("aliases.radios")
+	_, ok := aliases[strconv.Itoa(int(master.ID))]
+	if !ok {
+		//Repeater isn't in config file. Write it...
+		aliases[strconv.Itoa(int(master.ID))] = master.GetRadioAlias()
+		viper.Set("aliases.radios", aliases)
+		viper.WriteConfig()
+	}
 	fmt.Printf("    XNL ID = %d\n", sys.GetMasterXNLID())
 	fmt.Printf("    XCMP Version = %s\n", master.GetXCMPVersion())
 	fmt.Printf("    Serial Number = %s\n", master.GetSerialNumber())
 	fmt.Printf("    Firmware Version = %s\n", master.GetFirmwareVersion())
 	fmt.Printf("    Model Number = %s\n", master.GetModelNumber())
-	fmt.Printf("    Radio Alias = %s\n", master.GetRadioAlias())
 	fmt.Printf("    Alarms\n")
 	alarms := master.GetAlarmStatus()
 	for name, state := range alarms {
@@ -75,6 +82,14 @@ func main() {
 		peerCallCount := make(chan int)
 		fmt.Printf("Peer %d ID: %d\n", index, peer.ID)
 		peer.InitXNL()
+		aliases := viper.GetStringMapString("aliases.radios")
+		_, ok := aliases[strconv.Itoa(int(peer.ID))]
+		if !ok {
+			//Repeater isn't in config file. Write it...
+			aliases[strconv.Itoa(int(master.ID))] = peer.GetRadioAlias()
+			viper.Set("aliases.radios", aliases)
+			viper.WriteConfig()
+		}
 		fmt.Printf("    XNL ID = %d\n", peer.GetXNLID())
 		fmt.Printf("    XCMP Version = %s\n", peer.GetXCMPVersion())
 		fmt.Printf("    Serial Number = %s\n", peer.GetSerialNumber())

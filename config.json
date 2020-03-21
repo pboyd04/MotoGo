@@ -14,8 +14,12 @@
       "254": "Nap"
     },
     "radios": {
+      "10001": "Repeater 1",
       "1008": "Problem",
       "2110": "Rainczech"
     }
-  }
+  },
+  "id": 1,
+  "influx": "http://localhost:8086",
+  "master": "192.168.0.100:50000"
 }
