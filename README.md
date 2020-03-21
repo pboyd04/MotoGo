@@ -9,3 +9,6 @@ groups are in use at a time, any repeater faults, etc.
 To do this I had to figure out XNL/XCMP. However, in an effort not to get a takedown notice I haven't included the constants needed by the
 XNL encrypter. With the algorithm I have here, Wireshark, and a copy of RDAC or similar software you should be able to reverse engineer the
 constants after a few itterations. 
+
+## Example Grafana Dashboard
+![Example Grafana Dashboard](https://github.com/pboyd04/MotoGo/raw/master/docs/Radio%20Dashboard.png)
