@@ -120,6 +120,11 @@ func (c *Client) GetRadioXNLID() Address {
 	return c.xnlID
 }
 
+// GetRadioAddress gets the IP address of the remote radio
+func (c *Client) GetRadioAddress() *net.UDPAddr {
+	return c.addr
+}
+
 func (c *Client) init() {
 	//fmt.Printf("%v: Initializing...\n", c.addr)
 	initPkt := NewInitPacket()

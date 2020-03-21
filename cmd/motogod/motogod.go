@@ -95,7 +95,6 @@ func main() {
 		fmt.Printf("    Serial Number = %s\n", peer.GetSerialNumber())
 		fmt.Printf("    Firmware Version = %s\n", peer.GetFirmwareVersion())
 		fmt.Printf("    Model Number = %s\n", peer.GetModelNumber())
-		fmt.Printf("    Radio Alias = %s\n", peer.GetRadioAlias())
 		fmt.Printf("    Alarms\n")
 		//alarms := peer.GetAlarmStatus()
 		//for name, state := range alarms {

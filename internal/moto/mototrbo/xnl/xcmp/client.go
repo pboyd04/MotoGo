@@ -13,8 +13,9 @@ type PacketHandler func(Packet) bool
 type Client struct {
 	client *xnl.Client
 
-	handlers map[MessageType]map[OpCode][]handler
-	ready    chan bool
+	handlers      map[MessageType]map[OpCode][]handler
+	ready         chan bool
+	statusPackets map[StatusType]chan RadioStatusReply
 
 	PacketsIn  chan Packet
 	Version    string
@@ -32,11 +33,13 @@ func NewClient(client *xnl.Client) *Client {
 	c.handlers = make(map[MessageType]map[OpCode][]handler)
 	c.PacketsIn = make(chan Packet, 5)
 	c.ready = make(chan bool, 1)
+	c.statusPackets = make(map[StatusType]chan RadioStatusReply)
 	c.handlers[Request] = make(map[OpCode][]handler)
 	c.handlers[Reply] = make(map[OpCode][]handler)
 	c.handlers[Broadcast] = make(map[OpCode][]handler)
 	c.client.RegisterHandler(xnl.DataMessage, c.gotXNLPacket)
 	c.RegisterHandler(Broadcast, OpCodeDeviceInitStatus, c.gotDeviceInitBroadcast)
+	c.RegisterHandler(Reply, OpCodeRadioStatus, c.gotRadioStatusReply)
 	c.client.GetAuthKey()
 	<-c.ready
 	return c
@@ -95,4 +98,24 @@ func (c *Client) gotDeviceInitBroadcast(pkt Packet) bool {
 		c.ready <- true
 	}
 	return true
+}
+
+func (c *Client) gotRadioStatusReply(pkt Packet) bool {
+	statusPkt := pkt.(RadioStatusReply)
+	_, ok := c.statusPackets[statusPkt.Status]
+	if !ok {
+		c.statusPackets[statusPkt.Status] = make(chan RadioStatusReply, 5)
+	}
+	c.statusPackets[statusPkt.Status] <- statusPkt
+	return true
+}
+
+// SendAndWaitForRadioStatusReply waits for a radio status reply packet with a certain status type
+func (c *Client) SendAndWaitForRadioStatusReply(status StatusType) RadioStatusReply {
+	_, ok := c.statusPackets[status]
+	if !ok {
+		c.statusPackets[status] = make(chan RadioStatusReply, 5)
+	}
+	c.SendPacket(NewRadioStatusRequestByParam(status))
+	return <-c.statusPackets[status]
 }

@@ -152,25 +152,19 @@ func (r *RemoteRadio) processAlarm(payload []byte) {
 
 // GetSerialNumber retrieves the remote radio serial number
 func (r *RemoteRadio) GetSerialNumber() string {
-	r.xcmpClient.SendPacket(xcmp.NewRadioStatusRequestByParam(xcmp.SerialNumber))
-	pkt := <-r.xcmpClient.PacketsIn
-	statusPkt := pkt.(xcmp.RadioStatusReply)
+	statusPkt := r.xcmpClient.SendAndWaitForRadioStatusReply(xcmp.SerialNumber)
 	return string(statusPkt.Data)
 }
 
 // GetModelNumber retrieves the remote radio model number
 func (r *RemoteRadio) GetModelNumber() string {
-	r.xcmpClient.SendPacket(xcmp.NewRadioStatusRequestByParam(xcmp.ModelNumber))
-	pkt := <-r.xcmpClient.PacketsIn
-	statusPkt := pkt.(xcmp.RadioStatusReply)
+	statusPkt := r.xcmpClient.SendAndWaitForRadioStatusReply(xcmp.ModelNumber)
 	return string(statusPkt.Data)
 }
 
 // GetRSSI retrieves the remote radio Received Signal Strength Indicator for both time slots
 func (r *RemoteRadio) GetRSSI() (float32, float32) {
-	r.xcmpClient.SendPacket(xcmp.NewRadioStatusRequestByParam(xcmp.RSSI))
-	pkt := <-r.xcmpClient.PacketsIn
-	statusPkt := pkt.(xcmp.RadioStatusReply)
+	statusPkt := r.xcmpClient.SendAndWaitForRadioStatusReply(xcmp.RSSI)
 	return util.CalcRSSI(statusPkt.Data, 0), util.CalcRSSI(statusPkt.Data, 2)
 }
 
@@ -184,9 +178,7 @@ func (r *RemoteRadio) GetFirmwareVersion() string {
 
 // GetRadioAlias retrieves the remote radio alias
 func (r *RemoteRadio) GetRadioAlias() string {
-	r.xcmpClient.SendPacket(xcmp.NewRadioStatusRequestByParam(xcmp.RadioAlias))
-	pkt := <-r.xcmpClient.PacketsIn
-	statusPkt := pkt.(xcmp.RadioStatusReply)
+	statusPkt := r.xcmpClient.SendAndWaitForRadioStatusReply(xcmp.RadioAlias)
 	length := len(statusPkt.Data) / 2
 	newU := make([]uint16, length)
 	for i := 0; i < length; i++ {
