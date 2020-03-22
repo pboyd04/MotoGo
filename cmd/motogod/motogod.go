@@ -162,8 +162,13 @@ func writeCallToDB(c client.Client, call *moto.RadioCall) {
 		"To":     radioIDToString(call.To, call.Group),
 		"From":   radioIDToString(call.From, false),
 		"Length": fmt.Sprintf("%f", call.EndTime.Sub(call.StartTime).Seconds()),
+		"Audio":  fmt.Sprintf("%t", call.Audio),
 	}
-	fmt.Printf("%s: Got call from %s to %s (%f seconds)\n", call.StartTime, tags["From"], tags["To"], call.EndTime.Sub(call.StartTime).Seconds())
+	calltype := "voice"
+	if !call.Audio {
+		calltype = "data"
+	}
+	fmt.Printf("%s: Got %s call from %s to %s (%f seconds)\n", call.StartTime, calltype, tags["From"], tags["To"], call.EndTime.Sub(call.StartTime).Seconds())
 	point, err := client.NewPoint("calls", tags, map[string]interface{}{"value": 1, "length": call.EndTime.Sub(call.StartTime).Seconds()}, call.StartTime)
 	if err != nil {
 		fmt.Printf("Error creating point %v\n", err)

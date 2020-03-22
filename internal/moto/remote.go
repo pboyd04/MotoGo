@@ -255,6 +255,9 @@ func (r *RemoteRadio) gotUserPacket(pkt mototrbo.Packet) bool {
 	call.End = upkt.End
 	call.Timeslot = upkt.TimeSlot
 	call.IsPhone = upkt.PhoneCall
+	//if !call.Audio {
+	//	fmt.Printf("%#v\n", upkt.Payload)
+	//}
 	if call.End {
 		call.EndTime = time.Now()
 		delete(r.activeCalls, to)

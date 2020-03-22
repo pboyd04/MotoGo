@@ -1,6 +1,11 @@
 package mototrbo
 
-import "github.com/pboyd04/MotoGo/internal/util"
+import (
+	"fmt"
+
+	"github.com/pboyd04/MotoGo/internal/moto/mototrbo/burst"
+	"github.com/pboyd04/MotoGo/internal/util"
+)
 
 // UserPacket a request to a Master to register
 type UserPacket struct {
@@ -12,11 +17,25 @@ type UserPacket struct {
 	End         bool //0x40
 	TimeSlot    byte //0x20
 	PhoneCall   bool //0x10
-	Payload     []byte
+	RTP         RTPData
+	Payload     burst.Burst
+}
+
+// RTPData represents the Real Time Protocol data sent by the radio
+type RTPData struct {
+	Version        byte
+	Padding        bool
+	Extension      bool
+	CSRCCount      byte
+	Marker         bool
+	PayloadType    byte
+	SequenceNumber uint16
+	Timestamp      uint32
+	SSRCID         uint32
 }
 
 //NewUserPacketByParam create user packet from params
-func NewUserPacketByParam(cmd Command, id RadioID, src RadioID, dest RadioID, encrypted bool, end bool, timeslot byte, phoneCall bool, payload []byte) UserPacket {
+func NewUserPacketByParam(cmd Command, id RadioID, src RadioID, dest RadioID, encrypted bool, end bool, timeslot byte, phoneCall bool, rtp RTPData, payload burst.Burst) UserPacket {
 	var m UserPacket
 	m.Command = cmd
 	m.ID = id
@@ -26,6 +45,7 @@ func NewUserPacketByParam(cmd Command, id RadioID, src RadioID, dest RadioID, en
 	m.End = end
 	m.TimeSlot = timeslot
 	m.PhoneCall = phoneCall
+	m.RTP = rtp
 	m.Payload = payload
 	return m
 }
@@ -46,8 +66,39 @@ func NewUserPacketByArray(data []byte) (UserPacket, error) {
 		p.TimeSlot = 1
 	}
 	p.PhoneCall = ((data[17] & 0x10) != 0)
-	p.Payload = data[18:]
+	p.RTP = RTPFromArray(data[18:])
+	if !p.RTP.Extension {
+		p.Payload = BurstFromArray(data[30:])
+	} else {
+		fmt.Printf("Have a header extenstion! Don't know how to process packet! %#v\n", data[18:])
+	}
 	return p, nil
+}
+
+//RTPFromArray converts RTP Data from an array
+func RTPFromArray(data []byte) RTPData {
+	var p RTPData
+	p.Version = data[0] >> 6
+	p.Padding = (data[0] & 0x20) != 0
+	p.Extension = (data[0] & 0x10) != 0
+	p.CSRCCount = data[0] & 0x0F
+	p.Marker = (data[1] & 0x80) != 0
+	p.PayloadType = data[1] & 0x7F
+	p.SequenceNumber = util.ParseUint16(data, 2)
+	p.Timestamp = util.ParseUint32(data, 4)
+	p.SSRCID = util.ParseUint32(data, 8)
+	return p
+}
+
+//BurstFromArray convers Burst Data from an array
+func BurstFromArray(data []byte) burst.Burst {
+	dt := burst.DataType(data[0])
+	switch dt {
+	case burst.DataTypeCSBK:
+		return burst.NewCSBKBurstFromArray(data)
+	default:
+		return burst.NewUnknownBurstFromArray(data)
+	}
 }
 
 // GetCommand returns the command for the packet
@@ -87,5 +138,7 @@ func (p UserPacket) ToArray() []byte {
 	if p.PhoneCall {
 		a[17] |= 0x10
 	}
-	return append(a, p.Payload...)
+	//TODO convert RTP and Burst to array...
+	return a
+	//return append(a, p.Payload...)
 }
