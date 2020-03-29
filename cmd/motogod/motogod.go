@@ -67,15 +67,11 @@ func main() {
 	fmt.Printf("    Serial Number = %s\n", master.GetSerialNumber())
 	fmt.Printf("    Firmware Version = %s\n", master.GetFirmwareVersion())
 	fmt.Printf("    Model Name = %s\n", master.GetModelName())
-	fmt.Printf("    Alarms\n")
-	alarms := master.GetAlarmStatus()
-	for name, state := range alarms {
-		fmt.Printf("        %s: %t\n", name, state)
-	}
 	calls := make(chan *moto.RadioCall, 10)
 	masterCallCount := make(chan int)
 	go master.ListenForCalls(calls, masterCallCount)
 	go logCountChanges(c, master.ID, masterCallCount)
+	go logAlarms(c, master)
 	go logRSSI(c, master)
 	peers := sys.PeerList()
 	for index, peer := range peers {
@@ -132,6 +128,36 @@ func logCountChanges(c client.Client, id mototrbo.RadioID, countChan chan int) {
 	}
 }
 
+func logAlarms(c client.Client, radio *moto.RemoteRadio) {
+	for {
+		batch, err := client.NewBatchPoints(client.BatchPointsConfig{Precision: "s", Database: "radios"})
+		if err != nil {
+			fmt.Printf("Error creating batch %v\n", err)
+		}
+		alarms := radio.GetAlarmStatus()
+		for name, state := range alarms {
+			tags := map[string]string{
+				"Radio": radioIDToString(radio.ID, false),
+				"Name":  name,
+			}
+			intState := 0
+			if state {
+				intState = 1
+			}
+			point, err := client.NewPoint("alarms", tags, map[string]interface{}{"value": intState}, time.Now())
+			if err != nil {
+				fmt.Printf("Error creating point %v\n", err)
+			}
+			batch.AddPoint(point)
+		}
+		err = c.Write(batch)
+		if err != nil {
+			fmt.Printf("Error writing batch %v\n", err)
+		}
+		<-time.After(5 * time.Minute)
+	}
+}
+
 func logRSSI(c client.Client, radio *moto.RemoteRadio) {
 	tags := map[string]string{
 		"Radio": radioIDToString(radio.ID, false),
@@ -164,6 +190,20 @@ func writeCallToDB(c client.Client, call *moto.RadioCall) {
 		"Length": fmt.Sprintf("%f", call.EndTime.Sub(call.StartTime).Seconds()),
 		"Audio":  fmt.Sprintf("%t", call.Audio),
 	}
+	/*
+		data := call.ConsolidateData()
+		switch v := data.(type) {
+		case gopacket.Packet:
+			pkt := data.(gopacket.Packet)
+			appLayer := pkt.ApplicationLayer()
+			if appLayer != nil {
+				fmt.Printf("Call Data = %#v\n", appLayer.Payload())
+			} else {
+				fmt.Printf("Counldn't decode packet. %v\n", pkt.ErrorLayer())
+			}
+		default:
+			fmt.Printf("Call Data (Type = %T)= %#v\n", v, data)
+		}*/
 	calltype := "voice"
 	if !call.Audio {
 		calltype = "data"

@@ -7,6 +7,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/pboyd04/MotoGo/internal/moto/mototrbo"
+	"github.com/pboyd04/MotoGo/internal/moto/mototrbo/burst"
 	"github.com/pboyd04/MotoGo/internal/moto/mototrbo/xnl"
 	"github.com/pboyd04/MotoGo/internal/moto/mototrbo/xnl/xcmp"
 	"github.com/pboyd04/MotoGo/internal/util"
@@ -237,6 +238,7 @@ func (r *RemoteRadio) gotUserPacket(pkt mototrbo.Packet) bool {
 	if _, ok := r.activeCalls[to]; ok {
 		call = r.activeCalls[to]
 	} else {
+		call.Payload = make([]burst.Burst, 0)
 		call.StartTime = time.Now()
 	}
 	if pkt.GetCommand() == mototrbo.GroupVoiceCall || pkt.GetCommand() == mototrbo.GroupDataCall {
@@ -255,9 +257,7 @@ func (r *RemoteRadio) gotUserPacket(pkt mototrbo.Packet) bool {
 	call.End = upkt.End
 	call.Timeslot = upkt.TimeSlot
 	call.IsPhone = upkt.PhoneCall
-	//if !call.Audio {
-	//	fmt.Printf("%#v\n", upkt.Payload)
-	//}
+	call.Payload = append(call.Payload, upkt.Payload)
 	if call.End {
 		call.EndTime = time.Now()
 		delete(r.activeCalls, to)

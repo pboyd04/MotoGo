@@ -92,10 +92,21 @@ func RTPFromArray(data []byte) RTPData {
 
 //BurstFromArray convers Burst Data from an array
 func BurstFromArray(data []byte) burst.Burst {
-	dt := burst.DataType(data[0])
+	dt := burst.DataType(data[0] & 0x3F)
 	switch dt {
+	case burst.DataTypeVoiceLCHeader:
+		return burst.NewVoiceHeaderBurstFromArray(data)
+	case burst.DataTypeTerminatorWithLC:
+		return burst.NewVoiceTerminatorBurstFromArray(data)
 	case burst.DataTypeCSBK:
 		return burst.NewCSBKBurstFromArray(data)
+	case burst.DataTypeDataHeader:
+		return burst.NewDataHeaderBurstFromArray(data)
+	case burst.DataTypeRateThreeQuarter:
+		return burst.NewDataBurstFromArray(data)
+	case burst.DataTypeRateFullData:
+		//This only seems to happen for voice transmitions...
+		return burst.NewVoiceBurstFromArray(data)
 	default:
 		return burst.NewUnknownBurstFromArray(data)
 	}

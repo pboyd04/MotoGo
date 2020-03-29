@@ -20,21 +20,6 @@ type RadioSystem struct {
 	initializing *RemoteRadio
 }
 
-// RadioCall describes a call on the Radio
-type RadioCall struct {
-	Group     bool
-	Audio     bool
-	From      mototrbo.RadioID
-	To        mototrbo.RadioID
-	Encrypted bool
-	End       bool
-	Timeslot  byte
-	IsPhone   bool
-	Payload   []byte
-	StartTime time.Time
-	EndTime   time.Time
-}
-
 // NewRadioSystem create Radio System with the specified ID and the specified system type
 func NewRadioSystem(id mototrbo.RadioID, systemType mototrbo.LinkType) (*RadioSystem, error) {
 	sys := new(RadioSystem)
