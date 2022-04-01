@@ -1,5 +1,5 @@
 # MotoGo
-A go interface to talk to mototrbo repeaters
+A go interface to talk to mototrbo repeaters. FYI I mostly don't maintain this anymore. Trying to do some of the things I wanted without class inheritence was bugging me so I switched to .Net. You can find the more updated and more fully featured system here: https://github.com/pboyd04/Moto.Net
 
 ## Primary Use Case
 I'm using this to monitor 2 repeaters used for an event keeping track of how many radio calls each talk group makes, how many talk
