@@ -77,7 +77,7 @@ func (c *Client) RegisterHandler(cmd Command, handlerFunc PacketHandler) {
 func (c *Client) startListener() {
 	for {
 		// Get packet
-		raw := make([]byte, 100)
+		raw := make([]byte, 1024)
 		size, addr, _ := c.conn.ReadFrom(raw)
 		raw = raw[0 : size+1]
 		pkt, err := CreatePacketFromArray(raw)
