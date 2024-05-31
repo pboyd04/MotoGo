@@ -20,6 +20,7 @@ func main() {
 	viper.SetDefault("master", "192.168.0.100:50000")
 	viper.SetDefault("influx", "http://localhost:8086")
 	viper.SetDefault("id", 1)
+	viper.SetDefault("sysType", "CapacityPlus")
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".")
 
@@ -42,7 +43,14 @@ func main() {
 	}
 	defer c.Close()
 
-	sys, err := moto.NewRadioSystem(mototrbo.RadioID(viper.GetInt("id")), mototrbo.CapacityPlus)
+	mode := mototrbo.CapacityPlus
+	switch viper.GetString("sysType") {
+	case "CapacityPlus":
+		mode = mototrbo.CapacityPlus
+	case "IPSiteConnect":
+		mode = mototrbo.IPSiteConnect
+	}
+	sys, err := moto.NewRadioSystem(mototrbo.RadioID(viper.GetInt("id")), mode)
 	if err != nil {
 		panic(err)
 	}

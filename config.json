@@ -21,6 +21,7 @@
     }
   },
   "id": 1,
+  "sysType": "CapacityPlus",
   "influx": "http://localhost:8086",
   "master": "192.168.0.100:50000"
 }
